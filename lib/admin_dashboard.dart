@@ -1,38 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:project47/location_picker.dart';
+import 'manage_locations.dart';
+import 'manage_staff.dart';
+import 'live_location.dart';
+import 'movement_history.dart';
+import '../login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:project47/FirestoreService.dart';
-import 'package:project47/UserModel.dart';
-import 'package:project47/login.dart';
 
-class AdminDashboard extends StatefulWidget {
+class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
-  @override
-  _AdminDashboardState createState() => _AdminDashboardState();
-}
-
-class _AdminDashboardState extends State<AdminDashboard> {
-  UserModel? currentUser;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      UserModel? userData = await FirestoreService.getUserData(user.uid);
-      setState(() {
-        currentUser = userData;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _logout() async {
+  Future<void> _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
     Navigator.pushAndRemoveUntil(
       context,
@@ -47,105 +25,68 @@ class _AdminDashboardState extends State<AdminDashboard> {
       appBar: AppBar(
         title: Text('Admin Dashboard'),
         backgroundColor: Colors.red,
-        actions: [IconButton(icon: Icon(Icons.logout), onPressed: _logout)],
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: () => _logout(context),
+          ),
+        ],
       ),
-      body:
-          _isLoading
-              ? Center(child: CircularProgressIndicator())
-              : Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Welcome, ${currentUser?.name ?? 'Admin'}!',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text('Email: ${currentUser?.email ?? ''}'),
-                            Text(
-                              'Role: ${currentUser?.role.toUpperCase() ?? ''}',
-                            ),
-                            if (currentUser?.companyName != null)
-                              Text('Company: ${currentUser!.companyName}'),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Admin Features:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Expanded(
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        children: [
-                          _buildFeatureCard(
-                            'Manage Users',
-                            Icons.people,
-                            Colors.blue,
-                            () {
-                              // Navigate to user management
-                            },
-                          ),
-                          _buildFeatureCard(
-                            'Analytics',
-                            Icons.analytics,
-                            Colors.green,
-                            () {
-                              // Navigate to analytics
-                            },
-                          ),
-                          _buildFeatureCard(
-                            'Settings',
-                            Icons.settings,
-                            Colors.orange,
-                            () {
-                              // Navigate to settings
-                            },
-                          ),
-                          _buildFeatureCard(
-                            'Reports',
-                            Icons.report,
-                            Colors.purple,
-                            () {
-                              // Navigate to reports
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          children: [
+            _buildFeatureCard(
+              context,
+              'Manage Office Locations',
+              Icons.location_city,
+              Colors.blue,
+              const LocationPickerPage(),
+            ),
+            _buildFeatureCard(
+              context,
+              'Manage Staff Accounts',
+              Icons.people,
+              Colors.green,
+              const ManageStaffPage(),
+            ),
+            _buildFeatureCard(
+              context,
+              'Live Staff Locations',
+              Icons.gps_fixed,
+              Colors.orange,
+              const LiveLocationPage(),
+            ),
+            _buildFeatureCard(
+              context,
+              'Movement History',
+              Icons.history,
+              Colors.purple,
+              const MovementHistoryPage(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildFeatureCard(
+    BuildContext context,
     String title,
     IconData icon,
     Color color,
-    VoidCallback onTap,
+    Widget page,
   ) {
     return Card(
       child: InkWell(
-        onTap: onTap,
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => page),
+            ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(

@@ -15,15 +15,23 @@ class StaffDashboard extends StatefulWidget {
 
 class _StaffDashboardState extends State<StaffDashboard>
     with TickerProviderStateMixin {
+  // Core State Variables
   bool isWithinOffice = false;
   bool isPunchedIn = false;
   bool isTracking = false;
   String officeName = "Loading...";
   String locationStatus = "Checking location...";
   String userName = "Loading...";
+
+  // Timers
   Timer? locationCheckTimer;
   Timer? locationTrackingTimer;
   Timer? autoPunchTimer;
+  Timer? autoRefreshTimer;
+  Timer? autoPunchCountdownTimer;
+  Timer? nextAutoPunchTimer;
+
+  // Constants
   final double geofenceRadius = 25.0;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,25 +39,40 @@ class _StaffDashboardState extends State<StaffDashboard>
   final DateFormat timeFormatter = DateFormat('HH:mm:ss');
   final DateFormat fullDateFormatter = DateFormat('yyyy-MM-dd HH:mm:ss');
 
+  // Location & Office Data
   double officeLat = 0.0;
   double officeLng = 0.0;
   String? staffOfficeId;
   List<Map<String, dynamic>> todaySessions = [];
   double totalWorkingHours = 0.0;
+
+  // UI State
   bool isLoading = true;
   bool isAutoPunching = false;
+  bool isRefreshing = false;
+  String connectionStatus = "Connected";
+
+  // Auto punch system - Modified for continuous auto-punching
+  int nextAutoPunchCountdown = 0;
+  bool showNextAutoPunch = false;
+  bool autoSystemActive = false;
 
   // Animation controllers
   late AnimationController _pulseController;
   late AnimationController _scaleController;
+  late AnimationController _countdownController;
+  late AnimationController _shimmerController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _countdownAnimation;
+  late Animation<double> _shimmerAnimation;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _initializeApp();
+    _startAutoRefresh();
   }
 
   void _initializeAnimations() {
@@ -61,6 +84,14 @@ class _StaffDashboardState extends State<StaffDashboard>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
+    _countdownController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _shimmerController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
 
     _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
@@ -68,8 +99,38 @@ class _StaffDashboardState extends State<StaffDashboard>
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
     );
+    _countdownAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _countdownController, curve: Curves.easeInOut),
+    );
+    _shimmerAnimation = Tween<double>(begin: -2.0, end: 2.0).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.linear),
+    );
 
     _pulseController.repeat(reverse: true);
+    _countdownController.repeat(reverse: true);
+  }
+
+  void _startAutoRefresh() {
+    autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (mounted && !isLoading && !isAutoPunching) {
+        await _refreshData();
+      }
+    });
+  }
+
+  Future<void> _refreshData() async {
+    if (isRefreshing) return;
+
+    setState(() => isRefreshing = true);
+    try {
+      await Future.wait([_loadTodaySessions(), _checkCurrentLocation()]);
+      setState(() => connectionStatus = "Connected");
+    } catch (e) {
+      debugPrint('Auto refresh error: $e');
+      setState(() => connectionStatus = "Connection issues");
+    } finally {
+      setState(() => isRefreshing = false);
+    }
   }
 
   Future<void> _initializeApp() async {
@@ -84,6 +145,7 @@ class _StaffDashboardState extends State<StaffDashboard>
           officeName = "Initialization failed";
           locationStatus = "Please restart the app";
           isLoading = false;
+          connectionStatus = "Error";
         });
       }
     }
@@ -94,8 +156,13 @@ class _StaffDashboardState extends State<StaffDashboard>
     locationCheckTimer?.cancel();
     locationTrackingTimer?.cancel();
     autoPunchTimer?.cancel();
+    autoRefreshTimer?.cancel();
+    autoPunchCountdownTimer?.cancel();
+    nextAutoPunchTimer?.cancel();
     _pulseController.dispose();
     _scaleController.dispose();
+    _countdownController.dispose();
+    _shimmerController.dispose();
     super.dispose();
   }
 
@@ -115,7 +182,6 @@ class _StaffDashboardState extends State<StaffDashboard>
         return;
       }
 
-      // Check if location service is enabled
       bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
@@ -153,7 +219,6 @@ class _StaffDashboardState extends State<StaffDashboard>
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
-      // Continue with default name if user data fails to load
       if (mounted) {
         setState(() {
           userName = _auth.currentUser?.email ?? 'Unknown User';
@@ -170,7 +235,6 @@ class _StaffDashboardState extends State<StaffDashboard>
     }
 
     try {
-      // Load user document with retry logic
       DocumentSnapshot? userDoc;
       int retryCount = 0;
       const maxRetries = 3;
@@ -211,7 +275,6 @@ class _StaffDashboardState extends State<StaffDashboard>
         return;
       }
 
-      // Load office document with retry logic
       DocumentSnapshot? officeDoc;
       retryCount = 0;
 
@@ -257,10 +320,9 @@ class _StaffDashboardState extends State<StaffDashboard>
         return;
       }
 
-      // Load today's sessions and start location services
       await _loadTodaySessions();
       _startLocationCheck();
-      _startAutoPunchCheck();
+      _startAutoPunchSystem(); // Start the auto punch system
     } catch (e) {
       debugPrint('Error loading office location: $e');
       if (mounted) {
@@ -268,6 +330,7 @@ class _StaffDashboardState extends State<StaffDashboard>
           officeName = "Connection error";
           locationStatus = "Check internet and try again";
           isLoading = false;
+          connectionStatus = "Error";
         });
       }
     }
@@ -290,7 +353,7 @@ class _StaffDashboardState extends State<StaffDashboard>
       final sessions =
           query.docs.map((doc) {
             final data = doc.data();
-            data['id'] = doc.id; // Add document ID for reference
+            data['id'] = doc.id;
             return data;
           }).toList();
 
@@ -308,7 +371,6 @@ class _StaffDashboardState extends State<StaffDashboard>
         if (punchOut != null) {
           totalHours += punchOut.difference(punchIn).inMinutes / 60;
         } else if (i == sessions.length - 1) {
-          // Last session is still active
           currentlyPunchedIn = true;
           totalHours += DateTime.now().difference(punchIn).inMinutes / 60;
         }
@@ -323,7 +385,6 @@ class _StaffDashboardState extends State<StaffDashboard>
         });
       }
 
-      // Start location tracking if currently punched in
       if (currentlyPunchedIn && !isTracking) {
         _startLocationTracking();
       }
@@ -339,7 +400,6 @@ class _StaffDashboardState extends State<StaffDashboard>
     locationCheckTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       await _checkCurrentLocation();
     });
-    // Check immediately
     _checkCurrentLocation();
   }
 
@@ -370,14 +430,15 @@ class _StaffDashboardState extends State<StaffDashboard>
         });
       }
 
-      // Record location if tracking
       if (isTracking && isPunchedIn) {
         await _recordLocation(position);
       }
 
-      // Trigger auto-punch animation if just entered office
-      if (!wasWithinOffice && nowWithinOffice && !isPunchedIn) {
-        _triggerAutoPunchCheck();
+      // Auto punch system management
+      if (nowWithinOffice && !autoSystemActive) {
+        _startAutoPunchSystem();
+      } else if (!nowWithinOffice && autoSystemActive) {
+        _stopAutoPunchSystem();
       }
     } catch (e) {
       debugPrint('Location check error: $e');
@@ -387,105 +448,112 @@ class _StaffDashboardState extends State<StaffDashboard>
     }
   }
 
-  void _startAutoPunchCheck() {
-    autoPunchTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _triggerAutoPunchCheck();
+  // New auto punch system - continuous operation
+  void _startAutoPunchSystem() {
+    if (autoSystemActive) return;
+
+    setState(() {
+      autoSystemActive = true;
+      nextAutoPunchCountdown = 120; // 2 minutes
+      showNextAutoPunch = true;
+    });
+
+    _startNextAutoPunchTimer();
+  }
+
+  void _stopAutoPunchSystem() {
+    setState(() {
+      autoSystemActive = false;
+      showNextAutoPunch = false;
+    });
+    nextAutoPunchTimer?.cancel();
+  }
+
+  void _startNextAutoPunchTimer() {
+    nextAutoPunchTimer?.cancel();
+
+    nextAutoPunchTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && autoSystemActive && isWithinOffice) {
+        setState(() {
+          nextAutoPunchCountdown--;
+          if (nextAutoPunchCountdown <= 0) {
+            nextAutoPunchCountdown = 120; // Reset to 2 minutes
+            if (!isAutoPunching) {
+              _performAutoPunch();
+            }
+          }
+        });
+      } else {
+        timer.cancel();
+      }
     });
   }
 
-  void _triggerAutoPunchCheck() {
-    if (isWithinOffice && !isPunchedIn && !isAutoPunching && !isLoading) {
-      _startAutoPunchAnimation();
-    }
-  }
+  Future<void> _performAutoPunch() async {
+    if (!mounted || !isWithinOffice || isAutoPunching) return;
 
-  Future<void> _startAutoPunchAnimation() async {
-    if (!mounted) return;
+    setState(() {
+      isAutoPunching = true;
+    });
 
-    setState(() => isAutoPunching = true);
     _scaleController.forward();
 
-    // Show auto-punch dialog with animation
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Auto Punch-In'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _pulseAnimation.value,
-                      child: const Icon(
-                        Icons.location_on,
-                        size: 60,
-                        color: Colors.green,
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                const Text('You are at the office location!'),
-                const Text('Auto punch-in in 3 seconds...'),
-              ],
-            ),
-          ),
-    );
-
-    // Wait 3 seconds then auto punch
-    await Future.delayed(const Duration(seconds: 3));
-    Navigator.of(context).pop(); // Close dialog
-
-    await _performAutoPunch();
-  }
-
-  Future<void> _performAutoPunch() async {
     try {
+      // Always punch in when auto system is active
       await _punchIn(isAuto: true);
 
-      // Show success animation
       if (mounted) {
-        _scaleController.reverse().then((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Auto punched in at ${timeFormatter.format(DateTime.now())}',
-                    ),
-                  ],
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Auto data sent at ${timeFormatter.format(DateTime.now())}',
+                  ),
                 ),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          }
-        });
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Auto punch error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Auto punch failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showErrorSnackBar('Auto data send failed: ${e.toString()}');
       }
     } finally {
       if (mounted) {
         setState(() => isAutoPunching = false);
+        _scaleController.reverse();
       }
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () => _refreshData(),
+        ),
+      ),
+    );
   }
 
   Future<void> _recordLocation(geo.Position position) async {
@@ -566,7 +634,6 @@ class _StaffDashboardState extends State<StaffDashboard>
 
   Future<void> _punchIn({bool isAuto = false}) async {
     if (!mounted) return;
-    setState(() => isLoading = true);
     final user = _auth.currentUser;
     if (user == null) return;
 
@@ -582,102 +649,26 @@ class _StaffDashboardState extends State<StaffDashboard>
         'officeId': staffOfficeId,
         'officeName': officeName,
         'userName': userName,
-        'status': 'In Progress',
+        'status': 'Auto Data Entry',
         'isAutoPunch': isAuto,
         'punchInTime': fullDateFormatter.format(now),
         'date': formatter.format(now),
         'accuracy': position.accuracy,
+        'dataType': 'location_ping', // Mark as location ping
       };
 
+      // Create a new entry every time for location tracking
       await _firestore
           .collection('attendanceLogs')
           .doc(user.uid)
           .collection(formatter.format(now))
           .add(sessionData);
 
-      // Create daily summary
       await _updateDailySummary(sessionData);
-
-      _startLocationTracking();
       await _loadTodaySessions();
     } catch (e) {
-      debugPrint('Punch in error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Punch in failed: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => isLoading = false);
-      }
+      debugPrint('Auto data send error: $e');
       rethrow;
-    }
-  }
-
-  Future<void> _punchOut() async {
-    if (!mounted) return;
-    setState(() => isLoading = true);
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    try {
-      final activeSession = await _getActiveSession();
-
-      if (activeSession != null) {
-        final position = await geo.Geolocator.getCurrentPosition(
-          desiredAccuracy: geo.LocationAccuracy.high,
-        );
-
-        final now = DateTime.now();
-        final punchInTime =
-            (activeSession.data() as Map<String, dynamic>)['punchIn']
-                as Timestamp;
-        final duration = now.difference(punchInTime.toDate());
-
-        final updateData = {
-          'punchOut': Timestamp.now(),
-          'status': 'Completed',
-          'endLocation': GeoPoint(position.latitude, position.longitude),
-          'punchOutTime': fullDateFormatter.format(now),
-          'duration': duration.inMinutes,
-          'durationFormatted':
-              '${duration.inHours}h ${duration.inMinutes.remainder(60)}m',
-        };
-
-        await activeSession.reference.update(updateData);
-
-        // Update daily summary
-        await _updateDailySummary({
-          ...activeSession.data() as Map<String, dynamic>,
-          ...updateData,
-        });
-
-        _stopLocationTracking();
-        await _loadTodaySessions();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Punched out successfully'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Punch out error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Punch out failed: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => isLoading = false);
-      }
     }
   }
 
@@ -698,55 +689,27 @@ class _StaffDashboardState extends State<StaffDashboard>
 
         if (summaryDoc.exists) {
           final existingData = summaryDoc.data()!;
-          final sessions = List<Map<String, dynamic>>.from(
-            existingData['sessions'] ?? [],
+          final locationPings = List<Map<String, dynamic>>.from(
+            existingData['locationPings'] ?? [],
           );
 
-          // Update or add session
-          final sessionIndex = sessions.indexWhere(
-            (s) =>
-                s['punchIn'] == sessionData['punchIn'] ||
-                (s['punchInTime'] == sessionData['punchInTime']),
-          );
-
-          if (sessionIndex >= 0) {
-            sessions[sessionIndex] = sessionData;
-          } else {
-            sessions.add(sessionData);
-          }
-
-          // Recalculate totals
-          double totalHours = 0.0;
-          int completedSessions = 0;
-
-          for (final session in sessions) {
-            if (session['duration'] != null) {
-              totalHours += (session['duration'] as int) / 60.0;
-              completedSessions++;
-            }
-          }
+          locationPings.add(sessionData);
 
           transaction.update(summaryRef, {
-            'sessions': sessions,
-            'totalSessions': sessions.length,
-            'completedSessions': completedSessions,
-            'totalWorkingHours': totalHours,
+            'locationPings': locationPings,
+            'totalLocationPings': locationPings.length,
+            'lastLocationPing': Timestamp.now(),
             'lastUpdated': Timestamp.now(),
           });
         } else {
-          // Create new summary
           transaction.set(summaryRef, {
             'date': today,
             'userName': userName,
             'officeName': officeName,
             'officeId': staffOfficeId,
-            'sessions': [sessionData],
-            'totalSessions': 1,
-            'completedSessions': sessionData['status'] == 'Completed' ? 1 : 0,
-            'totalWorkingHours':
-                sessionData['duration'] != null
-                    ? (sessionData['duration'] as int) / 60.0
-                    : 0.0,
+            'locationPings': [sessionData],
+            'totalLocationPings': 1,
+            'lastLocationPing': Timestamp.now(),
             'createdAt': Timestamp.now(),
             'lastUpdated': Timestamp.now(),
           });
@@ -757,78 +720,151 @@ class _StaffDashboardState extends State<StaffDashboard>
     }
   }
 
-  Widget _buildPunchButton() {
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: isAutoPunching ? _scaleAnimation.value : 1.0,
-          child: SizedBox(
-            width: 200,
-            height: 200,
-            child: ElevatedButton(
-              onPressed:
-                  isWithinOffice && !isLoading && !isAutoPunching
-                      ? () {
-                        if (isPunchedIn) {
-                          _punchOut();
-                        } else {
-                          _punchIn();
-                        }
-                      }
-                      : null,
-              style: ElevatedButton.styleFrom(
-                shape: const CircleBorder(),
-                backgroundColor:
-                    isWithinOffice
-                        ? isPunchedIn
-                            ? Colors.redAccent
-                            : Colors.greenAccent
-                        : Colors.grey,
-                padding: const EdgeInsets.all(24),
-                elevation: 8,
-              ),
+  String _formatCountdown(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildAdvancedPunchButton() {
+    return Container(
+      width: 220,
+      height: 220,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors:
+              isWithinOffice && autoSystemActive
+                  ? [Colors.blue.shade400, Colors.blue.shade700]
+                  : [Colors.grey.shade400, Colors.grey.shade600],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isWithinOffice && autoSystemActive
+                    ? Colors.blue
+                    : Colors.grey)
+                .withOpacity(0.4),
+            blurRadius: 20,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: isAutoPunching ? _scaleAnimation.value : 1.0,
+            child: Container(
+              decoration: const BoxDecoration(shape: BoxShape.circle),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (isAutoPunching)
-                    const CircularProgressIndicator(color: Colors.white)
-                  else
+                  if (isAutoPunching) ...[
+                    const CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'SENDING DATA...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ] else ...[
                     Icon(
-                      isPunchedIn ? Icons.logout : Icons.login,
-                      size: 40,
+                      autoSystemActive
+                          ? Icons.location_searching
+                          : Icons.location_off,
+                      size: 45,
                       color: Colors.white,
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isAutoPunching
-                        ? 'AUTO PUNCHING...'
-                        : isPunchedIn
-                        ? 'PUNCH OUT'
-                        : 'PUNCH IN',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 12),
+                    Text(
+                      autoSystemActive ? 'AUTO TRACKING' : 'TRACKING OFF',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                    if (showNextAutoPunch && autoSystemActive) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Next ping in:',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              _formatCountdown(nextAutoPunchCountdown),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildSessionList() {
     if (todaySessions.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'No sessions today',
-          style: TextStyle(color: Colors.grey),
-          textAlign: TextAlign.center,
+      return Container(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Icon(
+              Icons.location_searching,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No location data today',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Auto tracking will start when you enter the office',
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
@@ -840,49 +876,117 @@ class _StaffDashboardState extends State<StaffDashboard>
       itemBuilder: (context, index) {
         final session = todaySessions[index];
         final punchIn = (session['punchIn'] as Timestamp).toDate();
-        final punchOut =
-            session['punchOut'] != null
-                ? (session['punchOut'] as Timestamp).toDate()
-                : null;
-        final duration =
-            punchOut != null
-                ? punchOut.difference(punchIn)
-                : DateTime.now().difference(punchIn);
         final isAuto = session['isAutoPunch'] ?? false;
 
-        return Card(
+        return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue.shade200, width: 1),
+          ),
           child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: punchOut == null ? Colors.green : Colors.blue,
-              child: Icon(
-                punchOut == null ? Icons.timer : Icons.check_circle,
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.location_on,
                 color: Colors.white,
+                size: 24,
               ),
             ),
             title: Row(
               children: [
-                Text(
-                  '${timeFormatter.format(punchIn)} - ${punchOut != null ? timeFormatter.format(punchOut) : 'Active'}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Location Ping - ${timeFormatter.format(punchIn)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
                 if (isAuto) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.autorenew, size: 16, color: Colors.orange),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.autorenew,
+                          size: 14,
+                          color: Colors.green,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'AUTO',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ],
             ),
-            subtitle: Text(
-              '${duration.inHours}h ${duration.inMinutes.remainder(60)}m${isAuto ? ' (Auto)' : ''}',
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  'Status: ${session['status'] ?? 'Data Entry'}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (session['accuracy'] != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Accuracy: ${(session['accuracy'] as double).toStringAsFixed(0)}m',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ],
             ),
-            trailing:
-                punchOut == null
-                    ? const Chip(
-                      label: Text('Active'),
-                      backgroundColor: Colors.green,
-                      labelStyle: TextStyle(color: Colors.white),
-                    )
-                    : null,
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'LOGGED',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
         );
       },
@@ -890,39 +994,103 @@ class _StaffDashboardState extends State<StaffDashboard>
   }
 
   Widget _buildStatsCard() {
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(16),
-      elevation: 4,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.blue.shade50, Colors.blue.shade100],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.1),
+            blurRadius: 20,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Text(
-              'TODAY\'S SUMMARY - $userName',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueGrey,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TODAY\'S TRACKING',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userName,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _getConnectionStatusColor().withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: AnimatedBuilder(
+                    animation:
+                        isRefreshing
+                            ? _pulseAnimation
+                            : kAlwaysCompleteAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale:
+                            isRefreshing
+                                ? _pulseAnimation.value * 0.3 + 0.7
+                                : 1.0,
+                        child: Icon(
+                          _getConnectionStatusIcon(),
+                          color: _getConnectionStatusColor(),
+                          size: 20,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatItem(
                   value: todaySessions.length.toString(),
-                  label: 'Sessions',
-                  icon: Icons.list_alt,
+                  label: 'Location Pings',
+                  icon: Icons.location_on,
+                  color: Colors.purple,
                 ),
                 _buildStatItem(
-                  value: totalWorkingHours.toStringAsFixed(1),
-                  label: 'Total Hours',
-                  icon: Icons.timer,
+                  value: autoSystemActive ? 'Active' : 'Inactive',
+                  label: 'Auto Tracking',
+                  icon: autoSystemActive ? Icons.gps_fixed : Icons.gps_off,
+                  color: autoSystemActive ? Colors.green : Colors.grey,
                 ),
                 _buildStatItem(
-                  value: isPunchedIn ? 'Active' : 'Inactive',
-                  label: 'Status',
-                  icon: isPunchedIn ? Icons.check_circle : Icons.pending,
+                  value: isWithinOffice ? 'In Office' : 'Away',
+                  label: 'Location',
+                  icon: isWithinOffice ? Icons.business : Icons.location_off,
+                  color: isWithinOffice ? Colors.green : Colors.orange,
                 ),
               ],
             ),
@@ -932,140 +1100,327 @@ class _StaffDashboardState extends State<StaffDashboard>
     );
   }
 
+  Color _getConnectionStatusColor() {
+    switch (connectionStatus) {
+      case "Connected":
+        return Colors.green;
+      case "Connection issues":
+        return Colors.orange;
+      case "Error":
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getConnectionStatusIcon() {
+    switch (connectionStatus) {
+      case "Connected":
+        return Icons.cloud_done;
+      case "Connection issues":
+        return Icons.cloud_queue;
+      case "Error":
+        return Icons.cloud_off;
+      default:
+        return Icons.cloud;
+    }
+  }
+
   Widget _buildStatItem({
     required String value,
     required String label,
     required IconData icon,
+    required Color color,
   }) {
-    return Column(
-      children: [
-        Icon(icon, size: 30, color: Colors.blue),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 28, color: color),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationStatus() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors:
+              isWithinOffice
+                  ? [Colors.green.shade50, Colors.green.shade100]
+                  : [Colors.orange.shade50, Colors.orange.shade100],
         ),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color:
+              isWithinOffice ? Colors.green.shade200 : Colors.orange.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isWithinOffice ? Colors.green : Colors.orange,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isWithinOffice ? Icons.location_on : Icons.location_off,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      officeName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      locationStatus,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color:
+                            isWithinOffice
+                                ? Colors.green.shade700
+                                : Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Staff Dashboard'),
+        title: const Text(
+          'Auto Tracking Dashboard',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.blue.shade800,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _loadTodaySessions();
-              _checkCurrentLocation();
-            },
+            icon:
+                isLoading || isRefreshing
+                    ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.blue.shade800,
+                      ),
+                    )
+                    : const Icon(Icons.refresh),
+            onPressed:
+                isLoading || isRefreshing
+                    ? null
+                    : () async {
+                      setState(() => isRefreshing = true);
+                      await _refreshData();
+                      setState(() => isRefreshing = false);
+                    },
           ),
+          const SizedBox(width: 8),
         ],
       ),
-      body:
-          isLoading && !isAutoPunching
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                child: Column(
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildStatsCard(),
+            _buildLocationStatus(),
+            const SizedBox(height: 24),
+            _buildAdvancedPunchButton(),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                autoSystemActive
+                    ? 'Auto tracking is active - Location data is being sent every 2 minutes'
+                    : 'Enter office area to activate auto tracking',
+                style: TextStyle(
+                  fontSize: 14,
+                  color:
+                      autoSystemActive
+                          ? Colors.green.shade700
+                          : Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            if (autoSystemActive) ...[
+              const SizedBox(height: 16),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade50, Colors.blue.shade100],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildStatsCard(),
-                    const SizedBox(height: 16),
-                    Text(
-                      officeName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      locationStatus,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isWithinOffice ? Colors.green : Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildPunchButton(),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        isWithinOffice
-                            ? isPunchedIn
-                                ? 'You can punch out now'
-                                : 'You can punch in now (Auto punch-in enabled)'
-                            : 'Move closer to office to enable punch-in',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isWithinOffice ? Colors.green : Colors.grey,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    if (isTracking) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.green.withOpacity(0.3),
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value * 0.3 + 0.7,
+                          child: const Icon(
+                            Icons.radar,
+                            color: Colors.blue,
+                            size: 20,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedBuilder(
-                              animation: _pulseAnimation,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: _pulseAnimation.value * 0.3 + 0.7,
-                                  child: const Icon(
-                                    Icons.my_location,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Location tracking active',
-                              style: TextStyle(
-                                color: Colors.green,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                        'TODAY\'S SESSIONS',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blueGrey,
-                          fontSize: 16,
-                        ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Auto tracking system active',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    _buildSessionList(),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),
+            ],
+            const SizedBox(height: 24),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade700],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.location_history,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'TODAY\'S LOCATION DATA',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (todaySessions.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${todaySessions.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  _buildSessionList(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
     );
   }
 }

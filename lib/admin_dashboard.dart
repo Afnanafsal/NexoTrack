@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:project47/location_picker.dart';
+import 'package:project47/Punching_history.dart';
 import 'manage_locations.dart';
 import 'manage_staff.dart';
 import 'live_location.dart';
-import 'movement_history.dart';
+import 'Punching_history.dart';
 import '../login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -62,10 +63,10 @@ class AdminDashboard extends StatelessWidget {
             ),
             _buildFeatureCard(
               context,
-              'Movement History',
+              'Punching History',
               Icons.history,
               Colors.purple,
-              const MovementHistoryPage(),
+              const PunchingHistoryPage(),
             ),
           ],
         ),

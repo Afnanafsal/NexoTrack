@@ -49,6 +49,7 @@ dependencies:
   permission_handler: ^12.0.0+1
   csv: ^6.0.0
   syncfusion_flutter_charts: ^29.2.7
+  syncfusion_flutter_datepicker: ^29.2.7
 
 dev_dependencies:
   flutter_test:

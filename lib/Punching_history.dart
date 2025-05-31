@@ -145,6 +145,10 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
                   )['name'];
               _showMap = false;
             });
+            // Auto fetch data when staff is selected
+            if (newValue != null) {
+              _fetchPunchingData();
+            }
           },
           items:
               _staffList.map<DropdownMenuItem<String>>((
@@ -211,6 +215,10 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
             _selectedDate = picked;
             _showMap = false;
           });
+          // Auto fetch data when date changes if staff is selected
+          if (_selectedStaffId != null) {
+            _fetchPunchingData();
+          }
         }
       },
       child: Container(
@@ -483,12 +491,13 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
       appBar: AppBar(
         title: const Text(
           'Staff Punching History',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
+        backgroundColor: Colors.blue,
         actions: [
           if (_selectedStaffId != null)
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: _fetchPunchingData,
             ),
         ],
@@ -511,6 +520,8 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
                       ),
                       onPressed:
                           _selectedStaffId == null
@@ -520,7 +531,7 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
                               },
                       child: const Text(
                         'View Punching History',
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
                     ),
                     const SizedBox(height: 24),

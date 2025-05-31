@@ -97,7 +97,8 @@ class _SignupPageState extends State<SignupPage>
           role: role,
           companyName: role == 'admin' ? _companyController.text.trim() : null,
           createdAt: DateTime.now(),
-          officeLocationId: 'default', // Add required parameter with default value
+          officeLocationId:
+              'default', // Add required parameter with default value
         );
 
         // Save user data to Firestore
@@ -114,9 +115,7 @@ class _SignupPageState extends State<SignupPage>
           MaterialPageRoute(
             builder:
                 (context) =>
-                    role == 'admin'
-                        ? AdminDashboard()
-                        : StaffDashboard(),
+                    role == 'admin' ? AdminDashboard() : StaffDashboard(),
           ),
         );
 
@@ -336,7 +335,8 @@ class _SignupPageState extends State<SignupPage>
                               decoration: InputDecoration(
                                 hintText: 'Enter role code',
                                 hintStyle: TextStyle(color: Colors.grey),
-                                helperText: 'Enter ADMIN456 for Admin or STAFF123 for Staff',
+                                helperText:
+                                    'Enter ADMIN456 for Admin or STAFF123 for Staff',
                                 prefixIcon: Icon(
                                   Icons.security,
                                   color: Colors.blue.shade700,
@@ -367,7 +367,8 @@ class _SignupPageState extends State<SignupPage>
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter role code';
                                 }
-                                if (FirestoreService.validateRoleCode(value) == null) {
+                                if (FirestoreService.validateRoleCode(value) ==
+                                    null) {
                                   return 'Invalid role code';
                                 }
                                 return null;
@@ -378,18 +379,20 @@ class _SignupPageState extends State<SignupPage>
                                 margin: EdgeInsets.only(top: 10),
                                 padding: EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: _selectedRole == 'admin'
-                                      ? Colors.orange.shade100
-                                      : Colors.blue.shade100,
+                                  color:
+                                      _selectedRole == 'admin'
+                                          ? Colors.orange.shade100
+                                          : Colors.blue.shade100,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   'Role: ${_selectedRole!.toUpperCase()}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: _selectedRole == 'admin'
-                                        ? Colors.orange.shade800
-                                        : Colors.blue.shade800,
+                                    color:
+                                        _selectedRole == 'admin'
+                                            ? Colors.orange.shade800
+                                            : Colors.indigo.shade800,
                                   ),
                                 ),
                               ),
@@ -435,7 +438,7 @@ class _SignupPageState extends State<SignupPage>
                                   ),
                                 ),
                                 validator: (value) {
-                                  if (_selectedRole == 'admin' && 
+                                  if (_selectedRole == 'admin' &&
                                       (value == null || value.isEmpty)) {
                                     return 'Please enter company name';
                                   }
@@ -579,7 +582,7 @@ class _SignupPageState extends State<SignupPage>
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _signup,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade700,
+                                  backgroundColor: Colors.indigo.shade800,
                                   foregroundColor: Colors.white,
                                   elevation: 2,
                                   shape: RoundedRectangleBorder(

@@ -310,7 +310,7 @@ class _LoginPageState extends State<LoginPage>
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.shade700,
+                                  backgroundColor: Colors.indigo.shade800,
                                   foregroundColor: Colors.white,
                                   elevation: 2,
                                   shape: RoundedRectangleBorder(

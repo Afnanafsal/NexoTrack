@@ -102,6 +102,7 @@ class _ManageLocationsPageState extends State<ManageLocationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Office Locations')),
+      backgroundColor: Colors.indigo.shade800,
       body: Column(
         children: [
           Padding(

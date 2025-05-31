@@ -1131,7 +1131,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                           fontSize:
                               MediaQuery.of(context).size.width < 400 ? 16 : 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
+                          color: Colors.indigo.shade800,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1246,7 +1246,7 @@ class _StaffDashboardState extends State<StaffDashboard>
   }) {
     // Determine text size based on value length
     final fontSize = value.length > 5 ? 16.0 : 20.0;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1385,7 +1385,7 @@ class _StaffDashboardState extends State<StaffDashboard>
           ],
         ),
         backgroundColor: Colors.white,
-        foregroundColor: Colors.blue.shade800,
+        foregroundColor: Colors.indigo.shade800,
         elevation: 0,
         actions: [
           IconButton(
@@ -1396,7 +1396,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.blue.shade800,
+                        color: Colors.indigo.shade800,
                       ),
                     )
                     : const Icon(Icons.refresh),

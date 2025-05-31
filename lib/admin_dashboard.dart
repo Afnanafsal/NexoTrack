@@ -15,7 +15,8 @@ class AdminDashboard extends StatefulWidget {
   _AdminDashboardState createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProviderStateMixin {
+class _AdminDashboardState extends State<AdminDashboard>
+    with SingleTickerProviderStateMixin {
   String _adminName = 'Admin';
   int _staffCount = 0;
   int _locationCount = 0;
@@ -53,32 +54,38 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Future<void> _fetchDashboardData() async {
     try {
       // Get staff data
-      final staffSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'staff')
-          .get();
-      
-      _staffList = staffSnapshot.docs
-          .map((doc) => {
-            'id': doc.id,
-            'name': doc.data()['name'] ?? 'Unknown',
-            'email': doc.data()['email'] ?? 'No email',
-          })
-          .toList();
-      
+      final staffSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('role', isEqualTo: 'staff')
+              .get();
+
+      _staffList =
+          staffSnapshot.docs
+              .map(
+                (doc) => {
+                  'id': doc.id,
+                  'name': doc.data()['name'] ?? 'Unknown',
+                  'email': doc.data()['email'] ?? 'No email',
+                },
+              )
+              .toList();
+
       // Get location data
-      final locationsSnapshot = await FirebaseFirestore.instance
-          .collection('officeLocations')
-          .get();
-      
-      _locationList = locationsSnapshot.docs
-          .map((doc) => {
-            'id': doc.id,
-            'name': doc.data()['name'] ?? 'Unknown location',
-            'address': doc.data()['address'] ?? 'No address',
-          })
-          .toList();
-      
+      final locationsSnapshot =
+          await FirebaseFirestore.instance.collection('officeLocations').get();
+
+      _locationList =
+          locationsSnapshot.docs
+              .map(
+                (doc) => {
+                  'id': doc.id,
+                  'name': doc.data()['name'] ?? 'Unknown location',
+                  'address': doc.data()['address'] ?? 'No address',
+                },
+              )
+              .toList();
+
       setState(() {
         _staffCount = _staffList.length;
         _locationCount = _locationList.length;
@@ -197,32 +204,35 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   ),
                   SizedBox(height: 20),
                   Expanded(
-                    child: _staffList.isEmpty
-                        ? Center(
-                            child: Text('No staff members found'),
-                          )
-                        : ListView.separated(
-                            controller: scrollController,
-                            itemCount: _staffList.length,
-                            separatorBuilder: (context, index) => Divider(),
-                            itemBuilder: (context, index) {
-                              final staff = _staffList[index];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.indigo.shade50,
-                                  child: Text(
-                                    staff['name'][0].toUpperCase(),
-                                    style: TextStyle(color: Colors.indigo.shade800),
+                    child:
+                        _staffList.isEmpty
+                            ? Center(child: Text('No staff members found'))
+                            : ListView.separated(
+                              controller: scrollController,
+                              itemCount: _staffList.length,
+                              separatorBuilder: (context, index) => Divider(),
+                              itemBuilder: (context, index) {
+                                final staff = _staffList[index];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.indigo.shade50,
+                                    child: Text(
+                                      staff['name'][0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.indigo.shade800,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                title: Text(
-                                  staff['name'],
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Text(staff['email']),
-                              );
-                            },
-                          ),
+                                  title: Text(
+                                    staff['name'],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(staff['email']),
+                                );
+                              },
+                            ),
                   ),
                 ],
               ),
@@ -291,29 +301,33 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   ),
                   SizedBox(height: 20),
                   Expanded(
-                    child: _locationList.isEmpty
-                        ? Center(
-                            child: Text('No locations found'),
-                          )
-                        : ListView.separated(
-                            controller: scrollController,
-                            itemCount: _locationList.length,
-                            separatorBuilder: (context, index) => Divider(),
-                            itemBuilder: (context, index) {
-                              final location = _locationList[index];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.amber.shade50,
-                                  child: Icon(Icons.location_on, color: Colors.amber.shade800),
-                                ),
-                                title: Text(
-                                  location['name'],
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Text(location['address']),
-                              );
-                            },
-                          ),
+                    child:
+                        _locationList.isEmpty
+                            ? Center(child: Text('No locations found'))
+                            : ListView.separated(
+                              controller: scrollController,
+                              itemCount: _locationList.length,
+                              separatorBuilder: (context, index) => Divider(),
+                              itemBuilder: (context, index) {
+                                final location = _locationList[index];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.amber.shade50,
+                                    child: Icon(
+                                      Icons.location_on,
+                                      color: Colors.amber.shade800,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    location['name'],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(location['address']),
+                                );
+                              },
+                            ),
                   ),
                 ],
               ),
@@ -332,52 +346,48 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
-        child: _isLoading 
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildHeader(context, size),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: BouncingScrollPhysics(),
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWelcomeSection(),
-                        SizedBox(height: 20),
-                        _buildStatsSection(size),
-                        SizedBox(height: 20),
-                        _buildFeatureCardsSection(size),
-                      ],
+        child:
+            _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : Column(
+                  children: [
+                    _buildHeader(context, size),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: BouncingScrollPhysics(),
+                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 20),
+                            _buildStatsSection(size),
+                            SizedBox(height: 20),
+                            _buildFeatureCardsSection(size),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context, Size size) {
     return Container(
-      height: size.height * 0.12,
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      height: size.height * 0.11,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.indigo.shade800, Colors.indigo.shade600],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+        color: Colors.indigo.shade800,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.indigo.withOpacity(0.3),
-            blurRadius: 15,
-            offset: Offset(0, 5),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -388,47 +398,64 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             Row(
               children: [
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: AnimatedBuilder(
-                    animation: _animationController,
-                    builder: (context, child) {
-                      return Transform.rotate(
-                        angle: _animationController.value * 0.1,
-                        child: Icon(
-                          Icons.track_changes_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      );
-                    },
+                  child: const Icon(
+                    Icons.hexagon_outlined,
+                    color: Colors.white,
+                    size: 22,
                   ),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'NexoTrack',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Admin Dashboard',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    const SizedBox(height: 3),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'WELCOME BACK ',
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(230),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _adminName.toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.white.withAlpha(230),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -436,31 +463,51 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             ),
             Row(
               children: [
-                IconButton(
-                  onPressed: () {
-                    // Notification or settings functionality could be added here
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Notifications coming soon'))
-                    );
-                  },
-                  icon: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Notifications coming soon'),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
-                    child: Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _logout(context),
-                  icon: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+                const SizedBox(width: 8),
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _logout(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
-                    child: Icon(Icons.logout_rounded, color: Colors.white, size: 20),
                   ),
                 ),
               ],
@@ -471,69 +518,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  Widget _buildWelcomeSection() {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.indigo[400]!, Colors.indigo[700]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.indigo.withOpacity(0.3),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: Colors.white.withOpacity(0.2),
-            radius: 25,
-            child: Icon(
-              Icons.person,
-              size: 30,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back,',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-                Text(
-                  _adminName,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildStatsSection(Size size) {
     final isSmallScreen = size.width < 360;
-    final cardPadding = isSmallScreen 
-        ? EdgeInsets.symmetric(vertical: 12, horizontal: 16)
-        : EdgeInsets.symmetric(vertical: 16, horizontal: 20);
-    
+    final cardPadding =
+        isSmallScreen
+            ? EdgeInsets.symmetric(vertical: 12, horizontal: 16)
+            : EdgeInsets.symmetric(vertical: 16, horizontal: 20);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -578,9 +570,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   }
 
   Widget _buildStatCard(
-    String title, 
-    String value, 
-    IconData icon, 
+    String title,
+    String value,
+    IconData icon,
     Color color,
     EdgeInsetsGeometry padding,
     VoidCallback onTap,
@@ -630,10 +622,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   ),
                   Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -648,7 +637,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     final isSmallScreen = size.width < 360;
     final cardAspectRatio = isSmallScreen ? 1.0 : 1.05;
     final spacing = isSmallScreen ? 12.0 : 16.0;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -676,8 +665,8 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               Icons.location_city_rounded,
               Colors.blue[700]!,
               () => Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => const LocationPickerPage())
+                context,
+                MaterialPageRoute(builder: (_) => const LocationPickerPage()),
               ),
             ),
             _buildFeatureCard(
@@ -685,8 +674,8 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               Icons.people_rounded,
               Colors.green[700]!,
               () => Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => const ManageStaffPage())
+                context,
+                MaterialPageRoute(builder: (_) => const ManageStaffPage()),
               ),
             ),
             _buildFeatureCard(
@@ -694,8 +683,8 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               Icons.gps_fixed_rounded,
               Colors.orange[700]!,
               () => Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => const LiveLocationPage())
+                context,
+                MaterialPageRoute(builder: (_) => const LiveLocationPage()),
               ),
             ),
             _buildFeatureCard(
@@ -703,8 +692,8 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               Icons.history_rounded,
               Colors.purple[700]!,
               () => Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => const PunchingHistoryPage())
+                context,
+                MaterialPageRoute(builder: (_) => const PunchingHistoryPage()),
               ),
             ),
           ],

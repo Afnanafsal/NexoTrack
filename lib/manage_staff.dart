@@ -349,79 +349,86 @@ class _ManageStaffPageState extends State<ManageStaffPage> {
                                     );
                                   }
                                   final locationMap = snapshot.data!;
-                                  return DropdownButtonFormField<String>(
-                                    value: _selectedLocationId,
+                                    return DropdownButtonFormField<String>(
+                                    value: locationMap.containsKey(_selectedLocationId) ? _selectedLocationId : null,
                                     icon: const SizedBox.shrink(),
                                     isExpanded: true,
+                                    hint: Text(
+                                      'Select a location',
+                                      style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 16,
+                                      ),
+                                    ),
                                     items:
-                                        locationMap.entries
-                                            .map(
-                                              (e) => DropdownMenuItem(
-                                                value: e.key,
-                                                child: Text(
-                                                  e.value,
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  softWrap: false,
-                                                  maxLines: 1,
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
+                                      locationMap.entries
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                          value: e.key,
+                                          child: Text(
+                                            e.value,
+                                            style: const TextStyle(
+                                            fontSize: 16,
+                                            ),
+                                            overflow:
+                                              TextOverflow.ellipsis,
+                                            softWrap: false,
+                                            maxLines: 1,
+                                          ),
+                                          ),
+                                        )
+                                        .toList(),
                                     onChanged:
-                                        (val) => setState(
-                                          () => _selectedLocationId = val,
-                                        ),
+                                      (val) => setState(
+                                        () => _selectedLocationId = val,
+                                      ),
                                     decoration: InputDecoration(
                                       labelText: 'Office Location',
                                       labelStyle: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
                                       ),
                                       suffixIcon: const Icon(
-                                        Icons.arrow_drop_down,
+                                      Icons.arrow_drop_down,
                                       ),
                                       border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: BorderSide.none,
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
                                       ),
                                       enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey[200]!,
-                                        ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey[200]!,
+                                      ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: BorderSide(
-                                          color: Theme.of(context).primaryColor,
-                                          width: 2,
-                                        ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: Theme.of(context).primaryColor,
+                                        width: 2,
+                                      ),
                                       ),
                                       errorBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                        borderSide: const BorderSide(
-                                          color: Colors.red,
-                                        ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(
+                                        color: Colors.red,
+                                      ),
                                       ),
                                       filled: true,
                                       fillColor: Colors.grey[50],
                                       contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 16,
-                                          ),
+                                        const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                        ),
                                     ),
                                     validator:
-                                        (val) =>
-                                            val == null
-                                                ? 'Please select a location'
-                                                : null,
-                                  );
+                                      (val) =>
+                                        val == null
+                                          ? 'Please select a location'
+                                          : null,
+                                    );
                                 },
                               ),
                             ),

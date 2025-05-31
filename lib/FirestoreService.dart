@@ -72,6 +72,13 @@ class FirestoreService {
     }
   }
 
+  static Future<void> createUser(UserModel user) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set(user.toMap());
+  }
+
   static Future<void> createStaffAccount({
     required String name,
     required String email,

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:project47/locationservice.dart';
+import 'package:project47/login.dart';
 
 class StaffDashboard extends StatefulWidget {
   const StaffDashboard({super.key});
@@ -1127,7 +1128,8 @@ class _StaffDashboardState extends State<StaffDashboard>
                       Text(
                         'TODAY\'S TRACKING',
                         style: TextStyle(
-                          fontSize: MediaQuery.of(context).size.width < 400 ? 16 : 18,
+                          fontSize:
+                              MediaQuery.of(context).size.width < 400 ? 16 : 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.blue.shade800,
                         ),
@@ -1136,7 +1138,8 @@ class _StaffDashboardState extends State<StaffDashboard>
                       Text(
                         userName,
                         style: TextStyle(
-                          fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+                          fontSize:
+                              MediaQuery.of(context).size.width < 400 ? 12 : 14,
                           color: Colors.blue.shade600,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1195,7 +1198,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildStatItem(
-                    value: isWithinOffice ? 'In Office' : 'Away',
+                    value: isWithinOffice ? 'In' : 'Away',
                     label: 'Location',
                     icon: isWithinOffice ? Icons.business : Icons.location_off,
                     color: isWithinOffice ? Colors.green : Colors.orange,
@@ -1241,6 +1244,9 @@ class _StaffDashboardState extends State<StaffDashboard>
     required IconData icon,
     required Color color,
   }) {
+    // Determine text size based on value length
+    final fontSize = value.length > 5 ? 16.0 : 20.0;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1268,10 +1274,12 @@ class _StaffDashboardState extends State<StaffDashboard>
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: fontSize,
               fontWeight: FontWeight.bold,
               color: color,
             ),
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
@@ -1281,6 +1289,8 @@ class _StaffDashboardState extends State<StaffDashboard>
               color: Colors.grey.shade600,
               fontWeight: FontWeight.w500,
             ),
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -1361,20 +1371,17 @@ class _StaffDashboardState extends State<StaffDashboard>
       appBar: AppBar(
         title: Row(
           children: [
-        const Text(
-          '👋 Hi ',
-          style: TextStyle(fontSize: 18),
-        ),
-        Expanded(
-          child: Text(
-            userName,
-            style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
+            const Text('👋 Hi ', style: TextStyle(fontSize: 18)),
+            Expanded(
+              child: Text(
+                userName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
           ],
         ),
         backgroundColor: Colors.white,
@@ -1382,24 +1389,47 @@ class _StaffDashboardState extends State<StaffDashboard>
         elevation: 0,
         actions: [
           IconButton(
-        icon:
-            isLoading || isRefreshing
-            ? SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.blue.shade800,
-              ),
-            )
-            : const Icon(Icons.refresh),
-        onPressed:
-            isLoading || isRefreshing
-            ? null
-            : () async {
-              setState(() => isRefreshing = true);
-              await _refreshData();
-              setState(() => isRefreshing = false);
+            icon:
+                isLoading || isRefreshing
+                    ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.blue.shade800,
+                      ),
+                    )
+                    : const Icon(Icons.refresh),
+            onPressed:
+                isLoading || isRefreshing
+                    ? null
+                    : () async {
+                      setState(() => isRefreshing = true);
+                      await _refreshData();
+                      setState(() => isRefreshing = false);
+                    },
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Log out',
+            onPressed: () async {
+              try {
+                await _auth.signOut();
+                if (mounted) {
+                  // Navigate to the login page
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error signing out: $e')),
+                  );
+                }
+              }
             },
           ),
           const SizedBox(width: 8),

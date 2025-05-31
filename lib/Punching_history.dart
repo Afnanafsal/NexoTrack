@@ -493,7 +493,8 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
           'Staff Punching History',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.indigo.shade800,
+        foregroundColor: Colors.white,
         actions: [
           if (_selectedStaffId != null)
             IconButton(
@@ -520,7 +521,7 @@ class _PunchingHistoryPageState extends State<PunchingHistoryPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        backgroundColor: Colors.blue,
+                        backgroundColor: Colors.indigo.shade800,
                         foregroundColor: Colors.white,
                       ),
                       onPressed:

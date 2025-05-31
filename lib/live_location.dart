@@ -358,7 +358,7 @@ class _LiveLocationPageState extends State<LiveLocationPage>
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.blue.shade800,
+                        color: Colors.indigo.shade800,
                       ),
                     )
                     : const Icon(Icons.refresh),

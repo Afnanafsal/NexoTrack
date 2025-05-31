@@ -296,7 +296,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        prefixIcon: Icon(icon, color: Colors.blue.shade700),
+        prefixIcon: Icon(icon, color: Colors.indigo.shade700),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide.none,
@@ -307,7 +307,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+          borderSide: BorderSide(color: Colors.indigo.shade700, width: 2),
         ),
         filled: true,
         fillColor: Colors.grey.shade50,
@@ -387,7 +387,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
             child: ElevatedButton(
               onPressed: _saveToFirestore,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
+                backgroundColor: Colors.indigo.shade700,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -434,7 +434,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
         children: [
           Row(
             children: [
-              Icon(Icons.pin_drop, color: Colors.blue.shade700),
+              Icon(Icons.pin_drop, color: Colors.indigo.shade700),
               SizedBox(width: 8),
               Text(
                 'Manual Coordinates',
@@ -481,7 +481,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
             child: ElevatedButton(
               onPressed: _handleLatLngInput,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
+                backgroundColor: Colors.indigo.shade700,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(

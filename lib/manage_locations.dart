@@ -129,6 +129,9 @@ class _ManageLocationsPageState extends State<ManageLocationsPage> {
                   onPressed: _saveLocation,
                   icon: const Icon(Icons.save),
                   label: const Text('Save Location'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade800,
+                  ),
                 ),
               ],
             ),

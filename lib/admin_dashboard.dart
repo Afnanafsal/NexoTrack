@@ -15,17 +15,30 @@ class AdminDashboard extends StatefulWidget {
   _AdminDashboardState createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProviderStateMixin {
   String _adminName = 'Admin';
   int _staffCount = 0;
   int _locationCount = 0;
   bool _isLoading = true;
+  late AnimationController _animationController;
+  List<Map<String, dynamic>> _staffList = [];
+  List<Map<String, dynamic>> _locationList = [];
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
     _loadUserData();
     _fetchDashboardData();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _loadUserData() {
@@ -39,20 +52,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _fetchDashboardData() async {
     try {
-      // Get staff count
+      // Get staff data
       final staffSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('role', isEqualTo: 'staff')
           .get();
       
-      // Get location count
+      _staffList = staffSnapshot.docs
+          .map((doc) => {
+            'id': doc.id,
+            'name': doc.data()['name'] ?? 'Unknown',
+            'email': doc.data()['email'] ?? 'No email',
+          })
+          .toList();
+      
+      // Get location data
       final locationsSnapshot = await FirebaseFirestore.instance
           .collection('officeLocations')
           .get();
       
+      _locationList = locationsSnapshot.docs
+          .map((doc) => {
+            'id': doc.id,
+            'name': doc.data()['name'] ?? 'Unknown location',
+            'address': doc.data()['address'] ?? 'No address',
+          })
+          .toList();
+      
       setState(() {
-        _staffCount = staffSnapshot.docs.length;
-        _locationCount = locationsSnapshot.docs.length;
+        _staffCount = _staffList.length;
+        _locationCount = _locationList.length;
         _isLoading = false;
       });
     } catch (e) {
@@ -110,8 +139,196 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  void _showStaffDetails() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 50,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Staff Members',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      CircleAvatar(
+                        backgroundColor: Colors.indigo.shade100,
+                        child: Text(
+                          '$_staffCount',
+                          style: TextStyle(
+                            color: Colors.indigo.shade800,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: _staffList.isEmpty
+                        ? Center(
+                            child: Text('No staff members found'),
+                          )
+                        : ListView.separated(
+                            controller: scrollController,
+                            itemCount: _staffList.length,
+                            separatorBuilder: (context, index) => Divider(),
+                            itemBuilder: (context, index) {
+                              final staff = _staffList[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.indigo.shade50,
+                                  child: Text(
+                                    staff['name'][0].toUpperCase(),
+                                    style: TextStyle(color: Colors.indigo.shade800),
+                                  ),
+                                ),
+                                title: Text(
+                                  staff['name'],
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                subtitle: Text(staff['email']),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showLocationDetails() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 50,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Office Locations',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      CircleAvatar(
+                        backgroundColor: Colors.amber.shade100,
+                        child: Text(
+                          '$_locationCount',
+                          style: TextStyle(
+                            color: Colors.amber.shade800,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child: _locationList.isEmpty
+                        ? Center(
+                            child: Text('No locations found'),
+                          )
+                        : ListView.separated(
+                            controller: scrollController,
+                            itemCount: _locationList.length,
+                            separatorBuilder: (context, index) => Divider(),
+                            itemBuilder: (context, index) {
+                              final location = _locationList[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.amber.shade50,
+                                  child: Icon(Icons.location_on, color: Colors.amber.shade800),
+                                ),
+                                title: Text(
+                                  location['name'],
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                subtitle: Text(location['address']),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 360;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
@@ -119,19 +336,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                _buildHeader(),
+                _buildHeader(context, size),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: BouncingScrollPhysics(),
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildWelcomeSection(),
                         SizedBox(height: 20),
-                        _buildStatsSection(),
+                        _buildStatsSection(size),
                         SizedBox(height: 20),
-                        _buildFeatureCardsSection(),
+                        _buildFeatureCardsSection(size),
                       ],
                     ),
                   ),
@@ -142,59 +359,114 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context, Size size) {
     return Container(
+      height: size.height * 0.12,
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
-        color: Colors.indigo[800],
+        gradient: LinearGradient(
+          colors: [Colors.indigo.shade800, Colors.indigo.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
+            color: Colors.indigo.withOpacity(0.3),
+            blurRadius: 15,
             offset: Offset(0, 5),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Admin Dashboard',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+      child: SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (context, child) {
+                      return Transform.rotate(
+                        angle: _animationController.value * 0.1,
+                        child: Icon(
+                          Icons.track_changes_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Manage your team efficiently',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 12,
+                SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'NexoTrack',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Admin Dashboard',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          IconButton(
-            onPressed: () => _logout(context),
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+              ],
             ),
-          ),
-        ],
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () {
+                    // Notification or settings functionality could be added here
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Notifications coming soon'))
+                    );
+                  },
+                  icon: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _logout(context),
+                  icon: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -256,7 +528,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildStatsSection() {
+  Widget _buildStatsSection(Size size) {
+    final isSmallScreen = size.width < 360;
+    final cardPadding = isSmallScreen 
+        ? EdgeInsets.symmetric(vertical: 12, horizontal: 16)
+        : EdgeInsets.symmetric(vertical: 16, horizontal: 20);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,15 +556,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 '$_staffCount',
                 Icons.people_alt_rounded,
                 Colors.teal,
+                cardPadding,
+                () => _showStaffDetails(),
               ),
             ),
-            SizedBox(width: 16),
+            SizedBox(width: isSmallScreen ? 12 : 16),
             Expanded(
               child: _buildStatCard(
                 'Locations',
                 '$_locationCount',
                 Icons.location_on_rounded,
                 Colors.amber[700]!,
+                cardPadding,
+                () => _showLocationDetails(),
               ),
             ),
           ],
@@ -296,63 +577,78 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
+  Widget _buildStatCard(
+    String title, 
+    String value, 
+    IconData icon, 
+    Color color,
+    EdgeInsetsGeometry padding,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
               color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
+              blurRadius: 10,
+              offset: Offset(0, 4),
             ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                ),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFeatureCardsSection() {
+  Widget _buildFeatureCardsSection(Size size) {
+    final isSmallScreen = size.width < 360;
+    final cardAspectRatio = isSmallScreen ? 1.0 : 1.05;
+    final spacing = isSmallScreen ? 12.0 : 16.0;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -371,9 +667,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           physics: NeverScrollableScrollPhysics(),
           shrinkWrap: true,
           crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.05,
+          crossAxisSpacing: spacing,
+          mainAxisSpacing: spacing,
+          childAspectRatio: cardAspectRatio,
           children: [
             _buildFeatureCard(
               'Office\nLocations',

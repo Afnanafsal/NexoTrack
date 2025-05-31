@@ -1,10 +1,10 @@
+import 'package:Nexotrack/FirestoreService.dart';
+import 'package:Nexotrack/UserModel.dart';
+import 'package:Nexotrack/admin_dashboard.dart';
+import 'package:Nexotrack/login.dart';
+import 'package:Nexotrack/staff_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:project47/FirestoreService.dart';
-import 'package:project47/UserModel.dart';
-import 'package:project47/admin_dashboard.dart';
-import 'package:project47/staff_dashboard.dart';
-import 'package:project47/login.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -70,7 +70,6 @@ class _SignupPageState extends State<SignupPage>
       setState(() => _isLoading = true);
 
       try {
-        // Validate role code
         String? role = FirestoreService.validateRoleCode(
           _roleCodeController.text.trim(),
         );
@@ -82,14 +81,12 @@ class _SignupPageState extends State<SignupPage>
           return;
         }
 
-        // Create user with email and password
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
               email: _emailController.text.trim(),
               password: _passwordController.text.trim(),
             );
 
-        // Create user model
         UserModel newUser = UserModel(
           uid: userCredential.user!.uid,
           name: _nameController.text.trim(),
@@ -97,11 +94,9 @@ class _SignupPageState extends State<SignupPage>
           role: role,
           companyName: role == 'admin' ? _companyController.text.trim() : null,
           createdAt: DateTime.now(),
-          officeLocationId:
-              'default', // Add required parameter with default value
+          officeLocationId: 'default',
         );
 
-        // Save user data to Firestore
         await FirestoreService.createUser(newUser);
 
         // Update display name
@@ -109,7 +104,6 @@ class _SignupPageState extends State<SignupPage>
           _nameController.text.trim(),
         );
 
-        // Navigate to appropriate dashboard
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -166,22 +160,6 @@ class _SignupPageState extends State<SignupPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: size.height * 0.03),
-                  Center(
-                    child: Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100.withOpacity(0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.person_add_outlined,
-                        size: 60,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: size.height * 0.03),
                   Center(
                     child: Text(
                       'Create Account',
@@ -396,56 +374,6 @@ class _SignupPageState extends State<SignupPage>
                                   ),
                                 ),
                               ),
-                            if (_selectedRole == 'admin') ...[
-                              SizedBox(height: 20),
-                              Text(
-                                'Company Name',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              TextFormField(
-                                controller: _companyController,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter company name',
-                                  hintStyle: TextStyle(color: Colors.grey),
-                                  prefixIcon: Icon(
-                                    Icons.business,
-                                    color: Colors.blue.shade700,
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.grey.shade50,
-                                  errorText: _companyError,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide: BorderSide(
-                                      color: Colors.blue.shade700,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  errorBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide: BorderSide(
-                                      color: Colors.red.shade700,
-                                    ),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (_selectedRole == 'admin' &&
-                                      (value == null || value.isEmpty)) {
-                                    return 'Please enter company name';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
                             SizedBox(height: 20),
                             Text(
                               'Password',

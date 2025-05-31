@@ -1,7 +1,8 @@
+import 'package:Nexotrack/LocationManager.dart';
+import 'package:Nexotrack/login.dart';
+import 'package:Nexotrack/splashscreen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:project47/LocationManager.dart';
-import 'package:project47/login.dart';
 import 'firebase_options.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
@@ -172,7 +173,7 @@ class MainApp extends StatelessWidget {
         return Scaffold(
           body: Stack(
             children: [
-              LoginPage(), // Your main app content
+              SplashScreen(), // Your main app content
               // Location status indicator (optional)
               Positioned(
                 top: 50,

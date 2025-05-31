@@ -1,6 +1,6 @@
+import 'package:Nexotrack/Punching_history.dart';
+import 'package:Nexotrack/location_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:project47/location_picker.dart';
-import 'package:project47/Punching_history.dart';
 import 'manage_locations.dart';
 import 'manage_staff.dart';
 import 'live_location.dart';
@@ -403,11 +403,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
-                    Icons.hexagon_outlined,
-                    color: Colors.white,
-                    size: 22,
-                  ),
+                  child: Image.asset('assets/logo3.png', width: 22, height: 22),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -517,7 +513,6 @@ class _AdminDashboardState extends State<AdminDashboard>
       ),
     );
   }
-
 
   Widget _buildStatsSection(Size size) {
     final isSmallScreen = size.width < 360;
@@ -738,7 +733,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                 ),
                 child: Icon(icon, color: color, size: 32),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 14),
               Text(
                 title,
                 textAlign: TextAlign.center,

@@ -1,11 +1,11 @@
+import 'package:Nexotrack/FirestoreService.dart';
+import 'package:Nexotrack/UserModel.dart';
+import 'package:Nexotrack/admin_dashboard.dart';
+import 'package:Nexotrack/reset.dart';
+import 'package:Nexotrack/signup.dart';
+import 'package:Nexotrack/staff_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:project47/FirestoreService.dart';
-import 'package:project47/UserModel.dart';
-import 'package:project47/admin_dashboard.dart';
-import 'package:project47/reset.dart';
-import 'package:project47/signup.dart';
-import 'package:project47/staff_dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -128,10 +128,11 @@ class _LoginPageState extends State<LoginPage>
                         color: Colors.blue.shade100.withOpacity(0.3),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        Icons.lock_outlined,
-                        size: 60,
-                        color: Colors.blue.shade700,
+                      child: Image.asset(
+                        'assets/logo2.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

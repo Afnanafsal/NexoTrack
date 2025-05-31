@@ -426,10 +426,8 @@ class _StaffDashboardState extends State<StaffDashboard>
   void _startLocationCheck() {
     locationCheckTimer?.cancel();
 
-    // First check immediately
     _checkCurrentLocation();
 
-    // Then start periodic checks with longer interval
     locationCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
       if (mounted && !isLoading) {
         await _checkCurrentLocation();
@@ -439,7 +437,6 @@ class _StaffDashboardState extends State<StaffDashboard>
 
   Future<void> _checkCurrentLocation() async {
     try {
-      // Check if location services are enabled (mobile only)
       if (!kIsWeb) {
         bool serviceEnabled = await LocationService.isLocationServiceEnabled();
         if (!serviceEnabled) {
@@ -458,7 +455,6 @@ class _StaffDashboardState extends State<StaffDashboard>
         }
       }
 
-      // Check location permission status
       LocationPermission permission = await LocationService.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await LocationService.requestPermission();
@@ -482,15 +478,12 @@ class _StaffDashboardState extends State<StaffDashboard>
         return;
       }
 
-      // Get position with platform-specific handling
       Position? position;
       try {
         if (!kIsWeb) {
-          // Try last known position first on mobile
           position = await LocationService.getLastKnownPosition();
         }
 
-        // If we don't have a position or we're on web, get fresh position
         if (position == null) {
           position = await LocationService.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.best,
@@ -545,7 +538,6 @@ class _StaffDashboardState extends State<StaffDashboard>
       });
     }
 
-    // Manage auto punch system based on location
     if (nowWithinOffice && !autoSystemActive) {
       _startAutoPunchSystem();
     } else if (!nowWithinOffice && autoSystemActive) {
@@ -563,7 +555,7 @@ class _StaffDashboardState extends State<StaffDashboard>
     });
 
     _startNextAutoPunchTimer();
-    _performAutoPunch(); // Perform initial punch immediately
+    _performAutoPunch();
   }
 
   void _stopAutoPunchSystem() {
@@ -840,13 +832,13 @@ class _StaffDashboardState extends State<StaffDashboard>
           end: Alignment.bottomRight,
           colors:
               isWithinOffice && autoSystemActive
-                  ? [Colors.blue.shade400, Colors.blue.shade700]
+                  ? [Colors.indigo.shade800, Colors.indigo.shade400]
                   : [Colors.grey.shade400, Colors.grey.shade600],
         ),
         boxShadow: [
           BoxShadow(
             color: (isWithinOffice && autoSystemActive
-                    ? Colors.blue
+                    ? Colors.indigo
                     : Colors.grey)
                 .withOpacity(0.4),
             blurRadius: 20,
@@ -1103,12 +1095,12 @@ class _StaffDashboardState extends State<StaffDashboard>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.blue.shade50, Colors.blue.shade100],
+          colors: [Colors.indigo.shade300, Colors.indigo.shade500],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.indigo.withOpacity(0.1),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -1131,7 +1123,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                           fontSize:
                               MediaQuery.of(context).size.width < 400 ? 16 : 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.indigo.shade800,
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1140,7 +1132,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                         style: TextStyle(
                           fontSize:
                               MediaQuery.of(context).size.width < 400 ? 12 : 14,
-                          color: Colors.blue.shade600,
+                          color: Colors.white,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1422,7 +1414,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                     context,
                     MaterialPageRoute(builder: (context) => const LoginPage()),
                   );
-                } 
+                }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

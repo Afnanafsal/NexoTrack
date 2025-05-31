@@ -138,83 +138,377 @@ class _ManageStaffPageState extends State<ManageStaffPage> {
     showDialog(
       context: context,
       builder:
-          (_) => AlertDialog(
-            title: const Text('Edit Staff'),
-            content: Form(
-              key: _formKey,
+          (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.transparent,
+            child: Container(
+              width:
+                  MediaQuery.of(context).size.width > 600
+                      ? 500
+                      : MediaQuery.of(context).size.width * 0.9,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+                maxWidth: 500,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Name'),
-                    validator:
-                        (val) =>
-                            val == null || val.trim().length < 3
-                                ? 'Enter a valid name'
-                                : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator:
-                        (val) =>
-                            val == null || !val.contains('@')
-                                ? 'Enter valid email'
-                                : null,
-                  ),
-                  const SizedBox(height: 10),
-                  FutureBuilder<Map<String, String>>(
-                    future: _getLocationsMap(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData)
-                        return const CircularProgressIndicator();
-                      final locationMap = snapshot.data!;
-                      return DropdownButtonFormField<String>(
-                        value: _selectedLocationId,
-                        items:
-                            locationMap.entries
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e.key,
-                                    child: Text(e.value),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged:
-                            (val) => setState(() => _selectedLocationId = val),
-                        decoration: const InputDecoration(
-                          labelText: 'Location',
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).primaryColor,
+                          Theme.of(context).primaryColor.withOpacity(0.8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Edit Staff',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Update staff information',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        validator:
-                            (val) => val == null ? 'Select a location' : null,
-                      );
-                    },
+                      ],
+                    ),
+                  ),
+
+                  // Content
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            // Name Field
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              child: TextFormField(
+                                controller: _nameController,
+                                decoration: InputDecoration(
+                                  labelText: 'Full Name',
+                                  labelStyle: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey[200]!,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Theme.of(context).primaryColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                validator:
+                                    (val) =>
+                                        val == null || val.trim().length < 3
+                                            ? 'Please enter a valid name (min 3 characters)'
+                                            : null,
+                              ),
+                            ),
+
+                            // Email Field
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              child: TextFormField(
+                                controller: _emailController,
+                                decoration: InputDecoration(
+                                  labelText: 'Email Address',
+                                  labelStyle: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey[200]!,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Theme.of(context).primaryColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                                validator:
+                                    (val) =>
+                                        val == null || !val.contains('@')
+                                            ? 'Please enter a valid email address'
+                                            : null,
+                              ),
+                            ),
+
+                            // Location Dropdown
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              child: FutureBuilder<Map<String, String>>(
+                                future: _getLocationsMap(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData) {
+                                    return Container(
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.grey[200]!,
+                                        ),
+                                        color: Colors.grey[50],
+                                      ),
+                                      child: const Center(
+                                        child: SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final locationMap = snapshot.data!;
+                                  return DropdownButtonFormField<String>(
+                                    value: _selectedLocationId,
+                                    icon: const SizedBox.shrink(),
+                                    isExpanded: true,
+                                    items:
+                                        locationMap.entries
+                                            .map(
+                                              (e) => DropdownMenuItem(
+                                                value: e.key,
+                                                child: Text(
+                                                  e.value,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  softWrap: false,
+                                                  maxLines: 1,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                    onChanged:
+                                        (val) => setState(
+                                          () => _selectedLocationId = val,
+                                        ),
+                                    decoration: InputDecoration(
+                                      labelText: 'Office Location',
+                                      labelStyle: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      suffixIcon: const Icon(
+                                        Icons.arrow_drop_down,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey[200]!,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: BorderSide(
+                                          color: Theme.of(context).primaryColor,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      errorBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.grey[50],
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 16,
+                                          ),
+                                    ),
+                                    validator:
+                                        (val) =>
+                                            val == null
+                                                ? 'Please select a location'
+                                                : null,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Action Buttons
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              side: BorderSide(color: Colors.grey[300]!),
+                              backgroundColor: Colors.white,
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed:
+                                _isLoading
+                                    ? null
+                                    : () =>
+                                        _createOrUpdateStaff(userId: userId),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                            ),
+                            child:
+                                _isLoading
+                                    ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                    : const Text(
+                                      'Update',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed:
-                    _isLoading
-                        ? null
-                        : () => _createOrUpdateStaff(userId: userId),
-                child:
-                    _isLoading
-                        ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Text('Update'),
-              ),
-            ],
           ),
     );
   }
@@ -222,23 +516,136 @@ class _ManageStaffPageState extends State<ManageStaffPage> {
   Future<void> _deleteStaff(String userId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            title: const Text('Delete Staff'),
-            content: const Text(
-              'Are you sure you want to delete this staff member?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: MediaQuery.of(context).size.width > 600
+              ? 400
+              : MediaQuery.of(context).size.width * 0.9,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColor.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Delete Staff',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Are you sure you want to delete this staff member?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+              
+              // Action Buttons
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          backgroundColor: Colors.white,
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
 
     if (confirm ?? false) {

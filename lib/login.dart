@@ -317,7 +317,9 @@ class _LoginPageState extends State<LoginPage>
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(15),
                                   ),
-                                  disabledBackgroundColor: Colors.blue.shade300,
+                                  disabledBackgroundColor:
+                                      Colors.indigo.shade300,
+                                  disabledForegroundColor: Colors.white,
                                 ),
                                 child:
                                     _isLoading

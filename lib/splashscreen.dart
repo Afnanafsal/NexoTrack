@@ -12,10 +12,12 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
+  late AnimationController _progressController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _progressAnimation;
   bool _isInitializingLocation = true;
   String _locationStatus = "Setting up location services...";
   bool _locationInitialized = false;
@@ -26,7 +28,13 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Setup animations
     _controller = AnimationController(
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+
+    // Setup progress controller for the entire splash duration
+    _progressController = AnimationController(
+      duration: const Duration(milliseconds: 10000), // Total splash duration
       vsync: this,
     );
 
@@ -42,7 +50,13 @@ class _SplashScreenState extends State<SplashScreen>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
+    );
+
+    // Start animations
     _controller.forward();
+    _progressController.forward();
 
     // Initialize location after animations start
     _initializeLocation();
@@ -50,14 +64,17 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initializeLocation() async {
     try {
-      final locationManager = Provider.of<LocationManager>(context, listen: false);
-      
+      final locationManager = Provider.of<LocationManager>(
+        context,
+        listen: false,
+      );
+
       setState(() {
         _locationStatus = "Requesting location permissions...";
       });
-      
+
       bool locationInitialized = await locationManager.initialize();
-      
+
       if (!locationInitialized) {
         setState(() {
           _locationStatus = "Location access denied";
@@ -66,26 +83,30 @@ class _SplashScreenState extends State<SplashScreen>
         _showLocationErrorDialog(locationManager.locationError);
         return;
       }
-      
+
       setState(() {
         _locationStatus = "Getting your location...";
       });
-      
-      // Wait for initial location
-      await Future.delayed(Duration(seconds: 2));
-      
+
+      await Future.delayed(Duration(milliseconds: 500));
+
       setState(() {
         _locationInitialized = true;
         _isInitializingLocation = false;
         _locationStatus = "Location initialized";
       });
-      
-      // Navigate to login page when location is ready
-      Future.delayed(const Duration(seconds: 1), () {
+
+      Future.delayed(const Duration(milliseconds: 200), () {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const LoginPage(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            pageBuilder:
+                (context, animation, secondaryAnimation) => const LoginPage(),
+            transitionsBuilder: (
+              context,
+              animation,
+              secondaryAnimation,
+              child,
+            ) {
               var curve = Curves.easeInOut;
               var curveTween = CurveTween(curve: curve);
 
@@ -104,7 +125,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: SlideTransition(position: slideAnimation, child: child),
               );
             },
-            transitionDuration: const Duration(milliseconds: 800),
+            transitionDuration: const Duration(milliseconds: 500),
           ),
         );
       });
@@ -180,6 +201,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -203,6 +225,8 @@ class _SplashScreenState extends State<SplashScreen>
                       children: [
                         Image.asset('assets/logo.png', width: 200, height: 200),
                         SizedBox(height: 40),
+
+                        // App name
                       ],
                     ),
                   ),
@@ -210,7 +234,61 @@ class _SplashScreenState extends State<SplashScreen>
               },
             ),
           ),
-          
+
+          // Overall Progress Indicator (from start to snackbar)
+          Positioned(
+            bottom: 200,
+            left: 0,
+            right: 0,
+            child: AnimatedBuilder(
+              animation: _progressController,
+              builder: (context, child) {
+                return AnimatedOpacity(
+                  opacity: _controller.value > 0.5 ? 1.0 : 0.0,
+                  duration: Duration(milliseconds: 500),
+                  child: Column(
+                    children: [
+                      Container(
+                        margin: EdgeInsets.symmetric(horizontal: 60),
+                        height: 6,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: _progressAnimation.value,
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        '${(_progressAnimation.value * 100).toInt()}%',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
           // Location status UI
           Positioned(
             bottom: 100,
@@ -243,22 +321,24 @@ class _SplashScreenState extends State<SplashScreen>
                           children: [
                             _isInitializingLocation
                                 ? SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.indigo),
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.indigo,
                                     ),
-                                  )
-                                : Icon(
-                                    _locationInitialized
-                                        ? Icons.location_on
-                                        : Icons.location_off,
-                                    color: _locationInitialized
-                                        ? Colors.green
-                                        : Colors.red,
                                   ),
+                                )
+                                : Icon(
+                                  _locationInitialized
+                                      ? Icons.location_on
+                                      : Icons.location_off,
+                                  color:
+                                      _locationInitialized
+                                          ? Colors.green
+                                          : Colors.red,
+                                ),
                             SizedBox(width: 10),
                             Text(
                               _locationStatus,
@@ -276,17 +356,17 @@ class _SplashScreenState extends State<SplashScreen>
                             builder: (context, locationManager, child) {
                               return locationManager.currentPosition != null
                                   ? Text(
-                                      locationManager.formattedLocation,
-                                      style: TextStyle(
-                                        fontSize: 14, 
-                                        color: Colors.grey.shade700
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    )
+                                    locationManager.formattedLocation,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  )
                                   : SizedBox.shrink();
                             },
                           ),
-                        ]
+                        ],
                       ],
                     ),
                   ),

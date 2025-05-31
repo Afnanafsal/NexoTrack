@@ -343,8 +343,8 @@ class _LiveLocationPageState extends State<LiveLocationPage>
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: Colors.indigo.shade800,
+        foregroundColor: Colors.white,
         title: const Text(
           'Staff Live Locations',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),

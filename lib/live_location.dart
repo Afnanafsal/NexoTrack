@@ -509,7 +509,7 @@ class _LiveLocationPageState extends State<LiveLocationPage>
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               subdomains: const ['a', 'b', 'c'],
-              userAgentPackageName: 'com.example.nexotrack',
+              userAgentPackageName: 'com.example.project47',
             ),
             MarkerLayer(markers: _buildMarkers()),
           ],

@@ -25,7 +25,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="project47">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
+<script src="https://unpkg.com/geolocator@2.1.3/dist/geolocator.min.js"></script>
+<script>
+  if (navigator.geolocation) {
+    // Browser supports Geolocation
+  } else {
+    console.log("Geolocation is not supported by this browser.");
+  }
+</script>
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 

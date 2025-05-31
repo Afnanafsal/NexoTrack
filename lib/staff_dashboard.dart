@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:project47/locationservice.dart';
 
 class StaffDashboard extends StatefulWidget {
   const StaffDashboard({super.key});
@@ -52,7 +55,7 @@ class _StaffDashboardState extends State<StaffDashboard>
   bool isRefreshing = false;
   String connectionStatus = "Connected";
 
-  // Auto punch system - Modified for continuous auto-punching
+  // Auto punch system
   int nextAutoPunchCountdown = 0;
   bool showNextAutoPunch = false;
   bool autoSystemActive = false;
@@ -79,19 +82,22 @@ class _StaffDashboardState extends State<StaffDashboard>
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
-    );
+    )..repeat(reverse: true);
+
     _scaleController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
+
     _countdownController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
-    );
+    )..repeat(reverse: true);
+
     _shimmerController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
-    );
+    )..repeat();
 
     _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
@@ -105,9 +111,6 @@ class _StaffDashboardState extends State<StaffDashboard>
     _shimmerAnimation = Tween<double>(begin: -2.0, end: 2.0).animate(
       CurvedAnimation(parent: _shimmerController, curve: Curves.linear),
     );
-
-    _pulseController.repeat(reverse: true);
-    _countdownController.repeat(reverse: true);
   }
 
   void _startAutoRefresh() {
@@ -129,7 +132,9 @@ class _StaffDashboardState extends State<StaffDashboard>
       debugPrint('Auto refresh error: $e');
       setState(() => connectionStatus = "Connection issues");
     } finally {
-      setState(() => isRefreshing = false);
+      if (mounted) {
+        setState(() => isRefreshing = false);
+      }
     }
   }
 
@@ -138,6 +143,12 @@ class _StaffDashboardState extends State<StaffDashboard>
       await _checkLocationPermission();
       await _loadUserData();
       await _loadStaffOfficeLocation();
+
+      // Try to get initial location immediately
+      await _checkCurrentLocation();
+
+      // Then start periodic checks
+      _startLocationCheck();
     } catch (e) {
       debugPrint('Initialization error: $e');
       if (mounted) {
@@ -171,22 +182,37 @@ class _StaffDashboardState extends State<StaffDashboard>
       var status = await Permission.location.status;
       if (!status.isGranted) {
         status = await Permission.location.request();
-      }
-
-      if (!status.isGranted) {
-        if (mounted) {
-          setState(() {
-            locationStatus = "Location permission required";
-          });
+        if (status.isDenied) {
+          if (mounted) {
+            setState(() {
+              locationStatus = "Location permission required";
+            });
+          }
+          return;
         }
-        return;
+        if (status.isPermanentlyDenied) {
+          if (mounted) {
+            setState(() {
+              locationStatus = "Enable location in app settings";
+            });
+          }
+          await openAppSettings();
+          return;
+        }
       }
 
-      bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
           setState(() {
             locationStatus = "Please enable location services";
+          });
+        }
+        // Optionally prompt user to enable location services
+        bool didEnable = await Geolocator.openLocationSettings();
+        if (!didEnable && mounted) {
+          setState(() {
+            locationStatus = "Location services required";
           });
         }
         return;
@@ -322,7 +348,7 @@ class _StaffDashboardState extends State<StaffDashboard>
 
       await _loadTodaySessions();
       _startLocationCheck();
-      _startAutoPunchSystem(); // Start the auto punch system
+      _startAutoPunchSystem();
     } catch (e) {
       debugPrint('Error loading office location: $e');
       if (mounted) {
@@ -397,58 +423,135 @@ class _StaffDashboardState extends State<StaffDashboard>
   }
 
   void _startLocationCheck() {
-    locationCheckTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      await _checkCurrentLocation();
-    });
+    locationCheckTimer?.cancel();
+
+    // First check immediately
     _checkCurrentLocation();
+
+    // Then start periodic checks with longer interval
+    locationCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (mounted && !isLoading) {
+        await _checkCurrentLocation();
+      }
+    });
   }
 
   Future<void> _checkCurrentLocation() async {
     try {
-      final position = await geo.Geolocator.getCurrentPosition(
-        desiredAccuracy: geo.LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
-      );
-
-      final distance = geo.Geolocator.distanceBetween(
-        position.latitude,
-        position.longitude,
-        officeLat,
-        officeLng,
-      );
-
-      final wasWithinOffice = isWithinOffice;
-      final nowWithinOffice = distance <= geofenceRadius;
-
-      if (mounted) {
-        setState(() {
-          isWithinOffice = nowWithinOffice;
-          locationStatus =
-              isWithinOffice
-                  ? 'At $officeName (${distance.toStringAsFixed(0)}m)'
-                  : '${distance.toStringAsFixed(0)}m from $officeName';
-        });
+      // Check if location services are enabled (mobile only)
+      if (!kIsWeb) {
+        bool serviceEnabled = await LocationService.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          if (mounted) {
+            setState(() {
+              locationStatus = "Please enable location services";
+            });
+          }
+          bool didEnable = await Geolocator.openLocationSettings();
+          if (!didEnable && mounted) {
+            setState(() {
+              locationStatus = "Location services required";
+            });
+          }
+          return;
+        }
       }
 
-      if (isTracking && isPunchedIn) {
-        await _recordLocation(position);
+      // Check location permission status
+      LocationPermission permission = await LocationService.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await LocationService.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              locationStatus = "Location permission denied";
+            });
+          }
+          return;
+        }
       }
 
-      // Auto punch system management
-      if (nowWithinOffice && !autoSystemActive) {
-        _startAutoPunchSystem();
-      } else if (!nowWithinOffice && autoSystemActive) {
-        _stopAutoPunchSystem();
+      if (permission == LocationPermission.deniedForever && !kIsWeb) {
+        if (mounted) {
+          setState(() {
+            locationStatus = "Location permissions permanently denied";
+          });
+        }
+        await openAppSettings();
+        return;
+      }
+
+      // Get position with platform-specific handling
+      Position? position;
+      try {
+        if (!kIsWeb) {
+          // Try last known position first on mobile
+          position = await LocationService.getLastKnownPosition();
+        }
+
+        // If we don't have a position or we're on web, get fresh position
+        if (position == null) {
+          position = await LocationService.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.best,
+            timeLimit: const Duration(seconds: kIsWeb ? 15 : 30),
+          );
+        }
+
+        if (position != null) {
+          _updateLocationStatus(position);
+          if (isTracking && isPunchedIn) {
+            await _recordLocation(position);
+          }
+        } else if (mounted) {
+          setState(() {
+            locationStatus = "Could not get current location";
+          });
+        }
+      } catch (e) {
+        debugPrint('Error getting position: $e');
+        if (mounted) {
+          setState(() {
+            locationStatus =
+                "Location error: ${e is TimeoutException ? 'Request timed out' : e.toString()}";
+          });
+        }
       }
     } catch (e) {
       debugPrint('Location check error: $e');
       if (mounted) {
-        setState(() => locationStatus = "Location unavailable");
+        setState(() => locationStatus = "Location error: ${e.toString()}");
       }
     }
   }
 
-  // New auto punch system - continuous operation
+  void _updateLocationStatus(Position position) {
+    final distance = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      officeLat,
+      officeLng,
+    );
+
+    final nowWithinOffice = distance <= geofenceRadius;
+
+    if (mounted) {
+      setState(() {
+        isWithinOffice = nowWithinOffice;
+        locationStatus =
+            isWithinOffice
+                ? 'At $officeName (${distance.toStringAsFixed(0)}m)'
+                : '${distance.toStringAsFixed(0)}m from $officeName';
+      });
+    }
+
+    // Manage auto punch system based on location
+    if (nowWithinOffice && !autoSystemActive) {
+      _startAutoPunchSystem();
+    } else if (!nowWithinOffice && autoSystemActive) {
+      _stopAutoPunchSystem();
+    }
+  }
+
   void _startAutoPunchSystem() {
     if (autoSystemActive) return;
 
@@ -459,6 +562,7 @@ class _StaffDashboardState extends State<StaffDashboard>
     });
 
     _startNextAutoPunchTimer();
+    _performAutoPunch(); // Perform initial punch immediately
   }
 
   void _stopAutoPunchSystem() {
@@ -499,7 +603,6 @@ class _StaffDashboardState extends State<StaffDashboard>
     _scaleController.forward();
 
     try {
-      // Always punch in when auto system is active
       await _punchIn(isAuto: true);
 
       if (mounted) {
@@ -654,10 +757,9 @@ class _StaffDashboardState extends State<StaffDashboard>
         'punchInTime': fullDateFormatter.format(now),
         'date': formatter.format(now),
         'accuracy': position.accuracy,
-        'dataType': 'location_ping', // Mark as location ping
+        'dataType': 'location_ping',
       };
 
-      // Create a new entry every time for location tracking
       await _firestore
           .collection('attendanceLogs')
           .doc(user.uid)
@@ -1025,7 +1127,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                       Text(
                         'TODAY\'S TRACKING',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: MediaQuery.of(context).size.width < 400 ? 16 : 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.blue.shade800,
                         ),
@@ -1034,7 +1136,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                       Text(
                         userName,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
                           color: Colors.blue.shade600,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1072,25 +1174,32 @@ class _StaffDashboardState extends State<StaffDashboard>
             ),
             const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem(
-                  value: todaySessions.length.toString(),
-                  label: 'Location Pings',
-                  icon: Icons.location_on,
-                  color: Colors.purple,
+                Expanded(
+                  child: _buildStatItem(
+                    value: todaySessions.length.toString(),
+                    label: 'Location Pings',
+                    icon: Icons.location_on,
+                    color: Colors.purple,
+                  ),
                 ),
-                _buildStatItem(
-                  value: autoSystemActive ? 'Active' : 'Inactive',
-                  label: 'Auto Tracking',
-                  icon: autoSystemActive ? Icons.gps_fixed : Icons.gps_off,
-                  color: autoSystemActive ? Colors.green : Colors.grey,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatItem(
+                    value: autoSystemActive ? 'Active' : 'Inactive',
+                    label: '',
+                    icon: autoSystemActive ? Icons.gps_fixed : Icons.gps_off,
+                    color: autoSystemActive ? Colors.green : Colors.grey,
+                  ),
                 ),
-                _buildStatItem(
-                  value: isWithinOffice ? 'In Office' : 'Away',
-                  label: 'Location',
-                  icon: isWithinOffice ? Icons.business : Icons.location_off,
-                  color: isWithinOffice ? Colors.green : Colors.orange,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatItem(
+                    value: isWithinOffice ? 'In Office' : 'Away',
+                    label: 'Location',
+                    icon: isWithinOffice ? Icons.business : Icons.location_off,
+                    color: isWithinOffice ? Colors.green : Colors.orange,
+                  ),
                 ),
               ],
             ),
@@ -1250,34 +1359,48 @@ class _StaffDashboardState extends State<StaffDashboard>
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text(
-          'Auto Tracking Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+        const Text(
+          '👋 Hi ',
+          style: TextStyle(fontSize: 18),
+        ),
+        Expanded(
+          child: Text(
+            userName,
+            style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+          ],
         ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.blue.shade800,
         elevation: 0,
         actions: [
           IconButton(
-            icon:
-                isLoading || isRefreshing
-                    ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.blue.shade800,
-                      ),
-                    )
-                    : const Icon(Icons.refresh),
-            onPressed:
-                isLoading || isRefreshing
-                    ? null
-                    : () async {
-                      setState(() => isRefreshing = true);
-                      await _refreshData();
-                      setState(() => isRefreshing = false);
-                    },
+        icon:
+            isLoading || isRefreshing
+            ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.blue.shade800,
+              ),
+            )
+            : const Icon(Icons.refresh),
+        onPressed:
+            isLoading || isRefreshing
+            ? null
+            : () async {
+              setState(() => isRefreshing = true);
+              await _refreshData();
+              setState(() => isRefreshing = false);
+            },
           ),
           const SizedBox(width: 8),
         ],

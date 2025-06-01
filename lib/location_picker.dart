@@ -339,42 +339,44 @@ class _LocationPickerPageState extends State<LocationPickerPage>
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.location_on, color: Colors.green.shade700),
+          padding: EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.green.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.location_on, 
+            color: Colors.green.shade700, 
+            size: 20),
               ),
-              SizedBox(width: 12),
+              SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Selected Location',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      _selectedAddress!,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Selected Location',
+                style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
                 ),
+              ),
+              Text(
+                _selectedAddress!,
+                style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: MediaQuery.of(context).size.width < 360 ? 14 : 15,
+            color: Colors.black87,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-          SizedBox(height: 20),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
           _buildTextField(
             controller: _nameController,
             label: 'Enter a name for this location',
@@ -383,27 +385,30 @@ class _LocationPickerPageState extends State<LocationPickerPage>
           SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: MediaQuery.of(context).size.width < 360 ? 48 : 52,
             child: ElevatedButton(
               onPressed: _saveToFirestore,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo.shade700,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
+          backgroundColor: Colors.indigo.shade700,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save),
-                  SizedBox(width: 8),
-                  Text(
-                    'Save Location',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ],
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.save, size: MediaQuery.of(context).size.width < 360 ? 18 : 20),
+            SizedBox(width: 8),
+            Text(
+              'Save Location',
+              style: TextStyle(
+                fontSize: MediaQuery.of(context).size.width < 360 ? 14 : 16, 
+                fontWeight: FontWeight.w600
+              ),
+            ),
+          ],
               ),
             ),
           ),
@@ -654,16 +659,14 @@ class _LocationPickerPageState extends State<LocationPickerPage>
               ),
             ),
 
-            // Coordinate Input
             _buildCoordinateInput(),
 
-            // Selected Location Card
             _buildSelectedLocationCard(),
 
             // Map
-            Expanded(
+            Flexible(
               child: Container(
-                margin: EdgeInsets.all(16),
+                margin: EdgeInsets.all(MediaQuery.of(context).size.width < 360 ? 8 : 16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
@@ -707,8 +710,8 @@ class _LocationPickerPageState extends State<LocationPickerPage>
                           markers: [
                             Marker(
                               point: _currentLocation!,
-                              width: 40,
-                              height: 40,
+                              width: MediaQuery.of(context).size.width < 360 ? 30 : 40,
+                              height: MediaQuery.of(context).size.width < 360 ? 30 : 40,
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: Colors.green,
@@ -721,7 +724,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
                                 child: Icon(
                                   Icons.person,
                                   color: Colors.white,
-                                  size: 20,
+                                  size: MediaQuery.of(context).size.width < 360 ? 16 : 20,
                                 ),
                               ),
                             ),
@@ -732,12 +735,12 @@ class _LocationPickerPageState extends State<LocationPickerPage>
                           markers: [
                             Marker(
                               point: _selectedLocation!,
-                              width: 40,
-                              height: 40,
-                              child: const Icon(
+                              width: MediaQuery.of(context).size.width < 360 ? 30 : 40,
+                              height: MediaQuery.of(context).size.width < 360 ? 30 : 40,
+                              child: Icon(
                                 Icons.location_pin,
                                 color: Colors.red,
-                                size: 40,
+                                size: MediaQuery.of(context).size.width < 360 ? 30 : 40,
                               ),
                             ),
                           ],
@@ -756,8 +759,8 @@ class _LocationPickerPageState extends State<LocationPickerPage>
                                       loc['latitude'] as double,
                                       loc['longitude'] as double,
                                     ),
-                                    width: 35,
-                                    height: 35,
+                                    width: MediaQuery.of(context).size.width < 360 ? 25 : 35,
+                                    height: MediaQuery.of(context).size.width < 360 ? 25 : 35,
                                     child: Tooltip(
                                       message:
                                           loc['name']?.toString() ?? 'Unnamed',
@@ -773,7 +776,7 @@ class _LocationPickerPageState extends State<LocationPickerPage>
                                         child: Icon(
                                           Icons.business,
                                           color: Colors.white,
-                                          size: 16,
+                                          size: MediaQuery.of(context).size.width < 360 ? 12 : 16,
                                         ),
                                       ),
                                     ),
@@ -789,23 +792,48 @@ class _LocationPickerPageState extends State<LocationPickerPage>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _getCurrentLocation,
-        backgroundColor: Colors.indigo.shade800,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon:
-            _isLocating
-                ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                  ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 0 : 16,
+        ),
+        child:
+            MediaQuery.of(context).size.width < 360
+                ? FloatingActionButton(
+                  onPressed: _getCurrentLocation,
+                  backgroundColor: Colors.indigo.shade800,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  child:
+                      _isLocating
+                          ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                          : Icon(Icons.my_location),
                 )
-                : Icon(Icons.my_location),
-        label: Text(_isLocating ? 'Locating...' : 'My Location'),
+                // For regular screens, use extended FAB
+                : FloatingActionButton.extended(
+                  onPressed: _getCurrentLocation,
+                  backgroundColor: Colors.indigo.shade800,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  icon:
+                      _isLocating
+                          ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                          : Icon(Icons.my_location),
+                  label: Text(_isLocating ? 'Locating...' : 'My Location'),
+                ),
       ),
     );
   }

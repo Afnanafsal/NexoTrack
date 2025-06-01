@@ -70,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen>
       );
 
       setState(() {
-        _locationStatus = "Requesting location permissions...";
+        _locationStatus = "Getting permissions...";
       });
 
       bool locationInitialized = await locationManager.initialize();
@@ -343,7 +343,7 @@ class _SplashScreenState extends State<SplashScreen>
                             Text(
                               _locationStatus,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.indigo.shade800,
                               ),

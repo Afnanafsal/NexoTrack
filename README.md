@@ -136,7 +136,6 @@ flutter run -d windows
 
 **Capabilities:**
 - Auto location tracking
-- Manual punch in/out
 - View personal attendance
 - Location status monitoring
 - Session history
